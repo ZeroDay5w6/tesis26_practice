@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Логические узлы ЭВМ — интерактивная лаборатория</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6fa;--card:#fff;--ink:#14213d;--mut:#5b6b85;--line:#d5deea;--on:#ffb703;--onink:#3a2a00;--acc:#1d4ed8;--ok:#0f9d6b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1626;--card:#16223a;--ink:#e8eefb;--mut:#9fb0cc;--line:#2a3a5a;--acc:#6ea0ff}}
+:root[data-theme="dark"]{--bg:#0e1626;--card:#16223a;--ink:#e8eefb;--mut:#9fb0cc;--line:#2a3a5a;--acc:#6ea0ff}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Manrope,system-ui,Arial,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:1.5rem;margin:8px 0 4px;font-weight:800}
+.sub{color:var(--mut);margin:0 0 14px}
+nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+nav button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 13px;border-radius:999px;font:600 .9rem Manrope,sans-serif;cursor:pointer}
+nav button[aria-selected=true]{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+section{display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+section.on{display:block}
+h2{margin:0 0 6px;font-size:1.25rem}
+.life{background:rgba(255,183,3,.15);border-left:4px solid var(--on);padding:10px 12px;border-radius:6px;margin:10px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+.bit{width:62px;height:62px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--mut);font:800 1.5rem Manrope,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.bit small{font:600 .65rem Manrope,sans-serif;margin-top:4px}
+.bit.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.lamp{width:62px;height:62px;border-radius:50%;border:2px solid var(--line);background:var(--bg);color:var(--mut);display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 1.3rem Manrope,sans-serif;line-height:1;transition:.15s}
+.lamp small{font:600 .65rem Manrope,sans-serif;margin-top:3px}
+.lamp.on{background:var(--on);color:var(--onink);border-color:var(--on);box-shadow:0 0 18px var(--on)}
+.cell{width:40px;height:56px;border-radius:8px}
+.btn{border:0;background:var(--acc);color:#fff;padding:11px 16px;border-radius:10px;font:700 .95rem Manrope,sans-serif;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.say{font-weight:600;min-height:3em;margin:8px 0}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;text-align:center}
+td,th{border:1px solid var(--line);padding:6px 8px}
+tr.hl td{background:var(--on);color:var(--onink);font-weight:800}
+.big{font:800 2rem Manrope,sans-serif}
+.arrow{color:var(--mut);font-weight:800}
+.where{color:var(--mut);font-size:.9rem;margin-top:12px}
+@media(max-width:420px){.bit,.lamp{width:54px;height:54px}.cell{width:34px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Лаборатория логических узлов ЭВМ</h1>
+<p class="sub">Нажимайте на кнопки и смотрите, как «думает» компьютер. Жёлтая лампа = 1, серая = 0.</p>
+<nav id="nav" role="tablist"></nav>
+<div id="secs"></div>
+</main>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const tabs=[['half','Полусумматор'],['full','Полный сумматор'],['reg','Регистр'],['cnt','Счётчик'],['mux','Мультиплексор'],['dec','Дешифратор']];
+const nav=$('#nav'),secs=$('#secs');
+tabs.forEach(([id,t],i)=>{
+  const b=document.createElement('button');b.textContent=t;b.setAttribute('role','tab');b.setAttribute('aria-selected',i==0);
+  b.onclick=()=>{[...nav.children].forEach(x=>x.setAttribute('aria-selected',x==b));[...secs.children].forEach(s=>s.classList.toggle('on',s.id==id))};
+  nav.appendChild(b);
+  const s=document.createElement('section');s.id=id;if(!i)s.className='on';secs.appendChild(s);
+});
+// helpers
+function bit(label,v=0,cb){const b=document.createElement('button');b.className='bit';b.innerHTML='<span></span><small>'+label+'</small>';b.v=v;
+  b.set=x=>{b.v=x;b.firstChild.textContent=x;b.classList.toggle('on',!!x);b.setAttribute('aria-pressed',!!x)};
+  b.onclick=()=>{b.set(b.v^1);cb()};b.set(v);return b}
+function lamp(label,cls=''){const l=document.createElement('div');l.className='lamp '+cls;l.innerHTML='<span>0</span><small>'+label+'</small>';
+  l.set=x=>{l.firstChild.textContent=x;l.classList.toggle('on',!!x)};return l}
+function row(...els){const r=document.createElement('div');r.className='row';els.forEach(e=>r.append(typeof e=='string'?txt(e):e));return r}
+function txt(t){const s=document.createElement('span');s.className='arrow';s.textContent=t;return s}
+function say(){const d=document.createElement('div');d.className='say';d.setAttribute('aria-live','polite');return d}
+function head(sec,title,desc,life,where){sec.innerHTML='<h2>'+title+'</h2><p>'+desc+'</p><div class="life"><b>Из жизни:</b> '+life+'</div>';sec._w='<p class="where"><b>Где в компьютере:</b> '+where+'</p>'}
+function tbl(heads,rows){return '<div class="tw"><table><tr>'+heads.map(h=>'<th>'+h+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</table></div>'}
+
+// 1. Half adder
+(()=>{const s=$('#half');head(s,'Полусумматор','Складывает два одноразрядных числа A и B. Даёт сумму S (младший разряд) и перенос P (старший разряд). S = A XOR B, P = A AND B.',
+'коридорная лампа с двумя выключателями: меняете любой выключатель — лампа меняет состояние (это XOR). А перенос P — как «десяток» при сложении 9+1: когда обе единицы встретились, цифра не помещается и уходит в следующий разряд.','арифметико-логическое устройство (АЛУ) процессора.');
+const A=bit('A',0,u),B=bit('B',0,u),S=lamp('S сумма'),P=lamp('P перенос'),m=say();
+s.append(row(A,txt('+'),B,txt('='),P,S),m);
+s.insertAdjacentHTML('beforeend','<p>Таблица истинности (текущая строка подсвечена):</p>'+tbl(['A','B','Сумма (S)','Перенос (P)'],[[0,0,0,0],[0,1,1,0],[1,0,1,0],[1,1,0,1]]));
+s.insertAdjacentHTML('beforeend',s._w);const T=s.querySelectorAll('tr');
+function u(){const a=A.v,b=B.v,sv=a^b,p=a&b;S.set(sv);P.set(p);m.textContent=a+' + '+b+' = '+p+sv+' (в двоичной) = '+(a+b)+' в десятичной'+(p?'. Единица не поместилась — ушла в перенос!':'.');
+T.forEach((r,i)=>r.classList.toggle('hl',i==a*2+b+1))}u()})();
+
+// 2. Full adder
+(()=>{const s=$('#full');head(s,'Полный сумматор','Складывает три бита: A, B и перенос из предыдущего разряда (Pвх). Состоит из нескольких полусумматоров и вентиля ИЛИ.',
+'сложение столбиком. Вы пишете «7+5=12»: 2 пишете, 1 «держите в уме» и добавляете к следующему столбцу. Этот «ум» — вход переноса Pвх.','АЛУ: цепочка полных сумматоров складывает многоразрядные числа.');
+const A=bit('A',0,u),B=bit('B',0,u),C=bit('Pвх',0,u),S=lamp('S сумма'),P=lamp('Pвых'),m=say();
+s.append(row(A,txt('+'),B,txt('+'),C,txt('='),P,S),m);
+const rows=[];for(let i=0;i<8;i++){const a=i>>2&1,b=i>>1&1,c=i&1,t=a+b+c;rows.push([a,b,c,t&1,t>>1])}
+s.insertAdjacentHTML('beforeend',tbl(['A','B','Pвх','S','Pвых'],rows));s.insertAdjacentHTML('beforeend',s._w);const T=s.querySelectorAll('tr');
+function u(){const t=A.v+B.v+C.v;S.set(t&1);P.set(t>>1);m.textContent=A.v+' + '+B.v+' + '+C.v+' = '+t+' → пишем '+(t&1)+', переносим '+(t>>1)+' в следующий разряд.';
+T.forEach((r,i)=>r.classList.toggle('hl',i==A.v*4+B.v*2+C.v+1))}u()})();
+
+// 3. Register
+(()=>{const s=$('#reg');head(s,'Регистр','Группа триггеров, каждый хранит 1 бит. 8 триггеров = 8-битное число (0…255). Нажимайте на ячейки, чтобы записать число.',
+'ряд ячеек камеры хранения на вокзале: в каждой либо лежит вещь (1), либо пусто (0). Пока в здании есть свет, всё хранится. Если свет отключили — все ячейки «забывают» содержимое.','внутри процессора: регистры хранят данные, с которыми процессор работает прямо сейчас.');
+const cells=[];const r=document.createElement('div');r.className='row';
+for(let i=7;i>=0;i--){const c=bit('2^'+i,0,u);c.classList.add('cell');cells.push(c);r.append(c)}
+const val=document.createElement('div');val.className='big';const m=say();
+const inp=document.createElement('input');inp.type='number';inp.min=0;inp.max=255;inp.value=77;inp.style.cssText='width:80px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit';inp.setAttribute('aria-label','Число от 0 до 255');
+const w=document.createElement('button');w.className='btn';w.textContent='Записать число';w.onclick=()=>{let n=Math.max(0,Math.min(255,+inp.value||0));cells.forEach((c,i)=>c.set(n>>(7-i)&1));u();m.textContent='Записали '+n+' в регистр.'};
+const o=document.createElement('button');o.className='btn alt';o.textContent='Отключить питание';o.onclick=()=>{cells.forEach(c=>c.set(0));u();m.textContent='Питание отключено — регистр забыл всё (оперативная память и регистры хранят данные только при включённом питании).'};
+s.append(r,val,m,row(inp,w,o));s.insertAdjacentHTML('beforeend',s._w);
+function u(){let n=0;cells.forEach(c=>n=n*2+c.v);val.textContent=cells.map(c=>c.v).join('')+' = '+n;m.textContent='Нужно 8 ячеек, чтобы хранить числа от 0 до 255.'}u()})();
+
+// 4. Counter
+(()=>{const s=$('#cnt');head(s,'Счётчик','Считает импульсы (такты). Каждый импульс увеличивает число на 1. Когда все биты заполнены, счёт начинается заново с 0.',
+'турникет в метро: каждый проход — один «импульс», на табло число пассажиров растёт. Или шагомер: один шаг — плюс один.','счётчик команд процессора: считает такты и показывает, какую команду выполнять следующей.');
+const L=[];const r=document.createElement('div');r.className='row';for(let i=3;i>=0;i--){const l=lamp('2^'+i);L.push(l);r.append(l)}
+const big=document.createElement('div');big.className='big';const m=say();let n=0,timer=null;
+const bt=document.createElement('button');bt.className='btn';bt.textContent='Импульс (+1)';bt.onclick=()=>{n=(n+1)%16;u()};
+const au=document.createElement('button');au.className='btn alt';au.textContent='Авто-такты';au.onclick=()=>{if(timer){clearInterval(timer);timer=null;au.textContent='Авто-такты'}else{timer=setInterval(()=>{n=(n+1)%16;u()},600);au.textContent='Остановить'}};
+const rs=document.createElement('button');rs.className='btn alt';rs.textContent='Сброс';rs.onclick=()=>{n=0;u()};
+s.append(r,big,m,row(bt,au,rs));s.insertAdjacentHTML('beforeend',s._w);
+function u(){L.forEach((l,i)=>l.set(n>>(3-i)&1));big.textContent=n.toString(2).padStart(4,'0')+' = '+n;m.textContent=n==0?'Счёт с нуля. Четыре бита считают до 15, потом снова 0.':'Прошло импульсов: '+n+'.'}u()})();
+
+// 5. MUX
+(()=>{const s=$('#mux');head(s,'Мультиплексор (MUX)','«Электронный переключатель»: из нескольких входов выбирает один по двоичному адресу. 4 входа → нужно 2 адресных входа (2² = 4).',
+'пульт от телевизора. Каналов много (входы D0…D3), а экран один (выход Y). Номер канала — это адрес: вы выбираете, чей сигнал пойдёт на экран.','выбор данных из нескольких источников: например, откуда процессор берёт число.');
+const D=[0,1,2,3].map(i=>bit('D'+i,i%2,u)),A1=bit('A1',0,u),A0=bit('A0',0,u),Y=lamp('Y выход'),m=say();
+const l1=document.createElement('p');l1.textContent='Входы (каналы):';const l2=document.createElement('p');l2.textContent='Адрес (номер канала):';
+s.append(l1,row(...D),l2,row(A1,A0,txt('→'),Y),m);
+s.insertAdjacentHTML('beforeend',tbl(['Адрес A1A0','На выход идёт'],[['00','D0'],['01','D1'],['10','D2'],['11','D3']]));s.insertAdjacentHTML('beforeend',s._w);const T=s.querySelectorAll('tr');
+function u(){const k=A1.v*2+A0.v;D.forEach((d,i)=>d.style.outline=i==k?'3px solid var(--on)':'');Y.set(D[k].v);m.textContent='Адрес '+A1.v+A0.v+' ('+k+' в десятичной) → выбран вход D'+k+', на выходе '+D[k].v+'. Поменяйте значение D'+k+' и увидите, что лампа Y повторяет именно его.';
+T.forEach((r,i)=>r.classList.toggle('hl',i==k+1))}u()})();
+
+// 6. Decoder
+(()=>{const s=$('#dec');head(s,'Дешифратор','Превращает двоичный код в управляющий сигнал: включает ровно один выход. Например, код 010 включает выход №2.',
+'домофон в подъезде: вы набираете номер квартиры 5 — звонит только одна квартира из восьми. Номер — это код, квартира — выход.','адресация памяти: код адреса «выбирает» одну нужную ячейку из многих.');
+const A=[bit('A2',0,u),bit('A1',0,u),bit('A0',0,u)];const O=[];const r=document.createElement('div');r.className='row';
+for(let i=0;i<8;i++){const l=lamp('выход '+i);O.push(l);r.append(l)}const m=say();
+s.append(row(...A),r,m);s.insertAdjacentHTML('beforeend',s._w);
+function u(){const k=A[0].v*4+A[1].v*2+A[2].v;O.forEach((l,i)=>l.set(i==k));m.textContent='Код '+A.map(a=>a.v).join('')+' = '+k+' → горит только выход '+k+' (звонит квартира '+k+').'}u()})();
+</script>
+</body>
+</html>
